@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Hydraulischer Abgleich — Endergebnis integriert</title>
+<style>
+  :root{
+    --cols:36;
+    --special-h: 10vh;
+    --repeat-h: 7.5vh;
+    --bg:#0E2841;
+    --white:#ffffff;
+    --blue:#8AA9E2;
+    --blue-light:#DFF0FF;
+    --green:#8AE297;
+    --gray:#BFBFBF;
+    --font: system-ui, Arial, sans-serif;
+    box-sizing: border-box;
+  }
+ 
+   button { background: var(--gray); 	 color: var(--bg); 	 border: 1px solid var(--white); 	 border-radius: 0.375rem;	 font-size: 1rem; 	 height: 2.5rem; 	 padding: 0.1rem; 	 box-sizing: border-box; font-weight: 600; 	 cursor: pointer; width: 100%;} 
+   
+   *,*::before,*::after{box-sizing:inherit;}
+   html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-family:var(--font);-webkit-font-smoothing:antialiased;}
+  .app{min-height:100vh;padding:0;display:grid;justify-items:center;}
+  .viewport{width:100%;max-width:45rem;display:grid;grid-template-columns:repeat(var(--cols),1fr);box-sizing:border-box;row-gap:0.75rem;}
+
+  .project-row{display: contents;}
+  .project-input{grid-column:2 / 28;background:var(--white);color:var(--bg);border:0;padding:12px;border-radius:6px;font-size:16px;box-sizing:border-box;}
+  .project-save{grid-column:29 / 32;display:flex;align-items:center;justify-content:center;box-sizing:border-box;}
+  .project-load{grid-column:33 / 36;display:flex;align-items:center;justify-content:center;box-sizing:border-box;}
+
+  .control-display{width:100%;height:60%;display:flex;align-items:center;justify-content:center;font-weight:700;box-sizing:border-box;}
+ 
+  .rooms-list{grid-column:2 / 36;display:contents;padding:0;margin:0;box-sizing:border-box;}
+  .room-row{display:contents;box-sizing:border-box;}
+  .room-box{grid-column:2 / 32;display:flex;align-items:center;padding:6px;border:1px solid var(--gray);border-radius:6px;background:transparent;color:var(--gray);box-sizing:border-box;}
+  .room-num{width:44px;text-align:center;font-weight:800;color:var(--gray);box-sizing:border-box;}
+  .room-name-btn{flex:1;text-align:left;background:transparent;border:0;color:inherit;font-weight:700;font-size:16px;padding:0;width:100%;box-sizing:border-box;}
+  .room-result{grid-column:33 / 36;text-align:center;font-weight:700;border:1px solid var(--gray);border-radius:6px;display:flex;align-items:center;justify-content:center;background:transparent;color:var(--gray);padding:6px;box-sizing:border-box;}
+  .room-box.done{background:var(--green);color:var(--bg);border-color:var(--green);box-sizing:border-box;}
+  .room-box.done .room-num{color:var(--bg);box-sizing:border-box;}
+  .room-box.done ~ .room-result{background:var(--green);color:var(--bg);border-color:var(--green);box-sizing:border-box;}
+
+  .overlay{position:fixed;inset:0;display:none;background:rgba(0,0,0,0.45);z-index:1000;}
+  .overlay.show{display:block;}
+  .modal{width:100%;max-width:45rem;height:100%;margin:0 auto;background:var(--blue-light);color:var(--bg);display:grid;grid-template-columns:repeat(var(--cols),1fr);grid-template-rows:var(--special-h) 1fr var(--special-h);overflow:hidden;}
+
+  .modal.done { background: var(--green); }
+
+  .modal .roomname{grid-column:2 / -1;display:flex;align-items:center;padding:12px;height:100%;}
+  .modal .roomname button{width:100%;height:100%;border:1px solid #ffffff;background:#fff;color:var(--bg);text-align:left;padding:12px;border-radius:6px;font-size:16px;box-sizing:border-box;}
+
+  .modal-content{grid-column:1 / -1;overflow:auto;padding:8px;}
+  .param-row{display:grid;grid-template-columns:repeat(var(--cols),1fr);align-items:center;height:var(--repeat-h);padding:6px;min-height:var(--repeat-h);max-height:var(--repeat-h);}
+  .param-label{grid-column:1 / 18;text-align:right;padding-right:12px;color:var(--bg);}
+  .param-minus{grid-column:20 / 24;display:flex;align-items:center;justify-content:center;}
+  .param-display{grid-column:25 / 31;display:flex;align-items:center;justify-content:center;height:4rem;}
+  .param-plus{grid-column:32 / 36;display:flex;align-items:center;justify-content:center;}
+  .display{width:100%;height:60%;border-radius:6px;background:var(--white);color:var(--bg);display:flex;align-items:center;justify-content:center;font-weight:700;box-sizing:border-box;}
+
+  .modal-actions{grid-column:1 / -1;display:grid;grid-template-columns:repeat(var(--cols),1fr);align-items:center;padding:8px;height:100%;}
+  .btn-done{grid-column:2 / 18}
+  .btn-close{grid-column:20 / 36}
+  
+  
+  
+  .name-modal-shell { display: grid; grid-template-columns: repeat(var(--cols), 1fr); grid-template-rows: var(--special-h) var(--special-h) 1fr; height: 100%; background: var(--blue-light); color: var(--bg); max-width: 45rem; margin-left: auto; margin-right: auto; width: 100%; padding-inline: 1rem; overflow: hidden; }
+  .name-presets {grid-column: 1 / -1; grid-row: 3 / 4; display: grid; padding: 12px; overflow: auto; -webkit-overflow-scrolling: touch; max-height: 100%; gap: 0.375rem;}
+  .name-input-row{grid-column: 1 / 36;display:grid;grid-template-columns:repeat(var(--cols),1fr);align-items:center;padding:12px;height:100%;}
+  .name-input{grid-column: 1 / 31; height:70%;padding:12px; border-radius:6px; border:1px solid #ffffff;background:var(--white);color:var(--bg);font-size:16px;box-sizing:border-box;}
+  .name-ok {grid-column: 32 / 36; display: grid; place-items: center;}
+  .name-select-row{grid-column: 2 / -1;display:grid;grid-template-columns:repeat(var(--cols),1fr);align-items:center;padding:0px;height:100%;}
+  .preset-btn {  width: 100%;  text-align: center;}
+   
+  [hidden]{display:none !important;}
+  
+  .display{overflow:hidden;}
+
+  .emoji{display:inline-block; transform-origin:center center; line-height:1; font-size:1rem;}
+  .emoji.small{ transform: scale(0.5); }
+  .emoji.normal{ transform: scale(1); }
+  .emoji.large{ transform: scale(2); }
+  
+</style>
+</head>
+<body>
+  <div class="app">
+    <div class="viewport">
+
+      <div class="project-row">
+        <input id="project-name" class="project-input" type="text" placeholder="Projektname eingeben" value="Auftrag Nr. 12345678 - Mustermann" />
+        <div class="project-save"><button id="save-csv">💾</button></div>
+        <div class="project-load"><button id="load-csv">📂</button></div> 
+      </div>
+
+      <div class="rooms-list" id="rooms-list"></div>
+
+    </div>
+  </div>
+
+  <div id="room-modal" class="overlay" role="dialog">
+    <div class="modal" id="room-modal-shell">
+      <div class="roomname">
+        <button id="room-name-display">Name auswählen</button>
+      </div>
+
+      <div class="modal-content" id="params-placeholder"></div>
+
+      <div class="modal-actions">
+        <button id="btn-fertig" class="btn-done">fertig</button>
+        <button id="btn-close" class="btn-close">schließen</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="name-modal" class="overlay" role="dialog">
+    <div class="name-modal-shell" id="name-modal-shell">
+      <div class="name-input-row">
+        <input id="name-input" class="name-input" placeholder="Hier Name für Raum eingeben" />
+        <div class="name-ok"><button id="name-ok-btn">OK</button></div>
+      </div>
+
+      <div class="name-select-row">
+        <div style="grid-column:2 / 26;color:var(--bg);align-self:center;">oder aus Vorrat auswählen</div>
+        <div style="grid-column:27 / 31;"><button id="pref-house">🏠</button></div>
+        <div style="grid-column:32 / 36;"><button id="pref-building">🏢</button></div>
+      </div>
+
+      <div class="name-presets" id="preset-list"></div>
+    </div>
+  </div>
+
+<script>
+/* Datenmodell und Logik */
+const MAX_ROOMS = 20;
+let rooms = Array.from({length: MAX_ROOMS}, (_,i)=>({
+  id: i+1,
+  name: '<Name auswählen>',
+  area:12, radiators:1, targetTemp:20, floor:0, valveMax:6,
+  outerWall:0, windowRatio:0, radiatorSize:0,
+  done:false, result:null, rRf:0, rawResult:null, endResult:null
+}));
+let visibleCount = 20;
+let activeIndex = null;
+
+/* globale Variablen */
+let lastFlMin = 0;   // kleinste Fläche unter fertigen sichtbaren Räumen
+let lastRrfMax = 0;  // max rRf unter fertigen sichtbaren Räumen
+
+const roomsList = document.getElementById('rooms-list');
+const roomModal = document.getElementById('room-modal');
+const roomModalShell = document.getElementById('room-modal-shell');
+const nameModal = document.getElementById('name-modal');
+const paramsPlaceholder = document.getElementById('params-placeholder');
+const roomNameDisplay = document.getElementById('room-name-display');
+const nameInput = document.getElementById('name-input');
+const presetList = document.getElementById('preset-list');
+
+const presetsHouse = ["Bad","Büro","Dachboden","Gästezimmer","Hausanschlussraum (HSR)","Hobbyraum","Keller","Kinderzimmer 1","Kinderzimmer 2","Küche","Schlafzimmer","WC Gäste","Werkstatt","Windfang","Wohnzimmer","Wohn-Esszimmer"];
+const presetsBuilding = ["Aufenthaltsraum","Besprechungszimmer","Büro","Buro XYZ","Cafeteria","Empfang","Kantine","Labor","Lager","Pausenraum","Sekretariat","Serverraum","Sozialraum","Technikraum","Waschraum","WC"];
+
+/* render main list — zeigt Endergebnis für fertige Räume */
+function render(){
+  roomsList.innerHTML = '';
+  for(let i=0;i<visibleCount;i++){
+    const r = rooms[i];
+	console.log(`Raum ${r.id} done:`, r.done);
+    const row = document.createElement('div'); row.className='room-row';
+    const box = document.createElement('div'); box.className = 'room-box' + (r.done ? ' done' : '');
+    const num = document.createElement('div'); num.className='room-num'; num.textContent=String(r.id).padStart(2,'0');
+    const nameBtn = document.createElement('button'); nameBtn.className='room-name-btn'; nameBtn.textContent = r.name;
+    nameBtn.addEventListener('click',(e)=>{ e.stopPropagation(); openRoom(i); });
+    box.appendChild(num); box.appendChild(nameBtn);
+    const result = document.createElement('div'); result.className='room-result';
+    if(r.done){
+      // show endResult if present, else blank
+      result.textContent = (typeof r.endResult === 'number') ? String(r.endResult) : '';
+    } else {
+      result.textContent = '';
+    }
+    row.appendChild(box); row.appendChild(result);
+    row.addEventListener('click',()=>openRoom(i));
+    roomsList.appendChild(row);
+  }
+}
+
+/* ensure unique name excluding activeIndex */
+function ensureUniqueName(base){
+  const names = rooms.slice(0, visibleCount)
+    .map((r, idx) => ({ name: r.name, idx }))
+    .filter(item => item.idx !== activeIndex)
+    .map(item => item.name);
+
+  if(!names.includes(base)) return base;
+  let i = 2;
+  let candidate = base + ' ' + i;
+  while(names.includes(candidate)){
+    i++;
+    candidate = base + ' ' + i;
+  }
+  return candidate;
+}
+
+/* compute rRf only from done rooms among visible rooms; set rRf, rawResult and endResult for those rooms;
+   update lastFlMin and lastRrfMax globals */
+function computeRrfForDoneRooms(){
+  const visible = rooms.slice(0, visibleCount);
+  const doneRooms = visible.filter(r => r.done === true);
+  if(doneRooms.length === 0){
+    visible.forEach(r => { r.rRf = 0; r.rawResult = null; r.endResult = null; });
+    lastFlMin = 0;
+    lastRrfMax = 0;
+    return { flMin: 0, rRfMax: 0 };
+  }
+
+  const areas = doneRooms.map(r => Number(r.area) || 0);
+  const flMin = Math.min(...areas);
+  doneRooms.forEach(r => { r.rRf = (Number(r.area) || 0) - flMin; });
+
+  const rRfMax = Math.max(...doneRooms.map(r => r.rRf || 0));
+
+  // compute rawResult for each done room per your formula and then endResult
+  doneRooms.forEach(r => {
+    const floor = Number(r.floor) || 0;
+    const rRf = Number(r.rRf) || 0;
+    const valveMax = Number(r.valveMax) || 0;
+    const radiators = Number(r.radiators) || 0;
+    const targetTemp = Number(r.targetTemp) || 0;
+    const outerWall = Number(r.outerWall) || 0;
+    const windowRatio = Number(r.windowRatio) || 0;
+    const radiatorSize = Number(r.radiatorSize) || 0;
+
+    const flmax = rRfMax;
+    const ratio = (flmax > 0) ? (rRf / flmax) : 0;
+    const valveTerm = ratio * (valveMax - 2) + 2;
+    const radiatorTerm = (radiators - radiators / 4);
+    const tempTerm = ((targetTemp - 20) / 3);
+
+    const raw = floor + valveTerm - radiatorTerm + tempTerm + outerWall + windowRatio + radiatorSize;
+    r.rawResult = raw;
+
+    // endResult rule: if rawResult > valveMax then valveMax else round(rawResult)
+    const rounded = Math.round(raw);
+    r.endResult = (raw > valveMax) ? valveMax : rounded;
+  });
+
+  // set rRf=0 and clear results for visible non-done rooms
+  visible.filter(r => !r.done).forEach(r => { r.rRf = 0; r.rawResult = null; r.endResult = null; });
+
+  lastFlMin = flMin;
+  lastRrfMax = rRfMax;
+  return { flMin, rRfMax };
+}
+
+/* open room modal and build params */
+function openRoom(i){
+  activeIndex = i;
+  const r = rooms[i];
+  roomNameDisplay.textContent = r.name;
+  const params = [
+    { key:'area', label:'Fläche m²' },
+    { key:'radiators', label:'Anz. Heizkörper' },
+    { key:'targetTemp', label:'Soll-Temp °C' },
+    { key:'floor', label:'Geschoss' },
+    { key:'valveMax', label:'max. Ventil' },
+    { key:'outerWall', label:'Anteil Außenwand' },
+    { key:'windowRatio', label:'Anteil Fenster' },
+    { key:'radiatorSize', label:'Größe Heizkörper' }
+  ];
+  
+  paramsPlaceholder.innerHTML = '';
+  
+  function emojiHtmlFor(key, value){
+    const map = {
+      outerWall: '🧱',
+      windowRatio: '🪟',
+      radiatorSize: '⬜'
+    };
+    const cls = (value === -1) ? 'small' : (value === 1) ? 'large' : 'normal';
+    return `<span class="emoji ${cls}" aria-hidden="true">${map[key] || ''}</span>`;
+  }
+  
+  params.forEach(p=>{
+    const row = document.createElement('div'); row.className='param-row';
+    const lab = document.createElement('div'); lab.className='param-label'; lab.textContent = p.label;
+    const minusWrap = document.createElement('div'); minusWrap.className='param-minus';
+    const btnMinus = document.createElement('button'); btnMinus.className='btn-plain'; btnMinus.textContent='−';
+    minusWrap.appendChild(btnMinus);
+    const displayWrap = document.createElement('div'); displayWrap.className='param-display';
+    const disp = document.createElement('div'); disp.className='display';   
+    const ternaryKeys = ['outerWall','windowRatio','radiatorSize'];
+    if (ternaryKeys.includes(p.key)) {
+      if (typeof r[p.key] !== 'number') r[p.key] = 0;
+      disp.innerHTML = emojiHtmlFor(p.key, r[p.key]);
+    } else {
+      disp.textContent = (r[p.key] !== undefined) ? String(r[p.key]) : '';
+    }
+    displayWrap.appendChild(disp);
+    const plusWrap = document.createElement('div'); plusWrap.className='param-plus';
+    const btnPlus = document.createElement('button'); btnPlus.className='btn-plain'; btnPlus.textContent='+';
+    plusWrap.appendChild(btnPlus);
+	
+
+function isTernaryParam(key){return key === 'outerWall' || key === 'windowRatio' || key === 'radiatorSize';}
+if (isTernaryParam(p.key) && typeof r[p.key] === 'number') r[p.key] = Math.max(-1, Math.min(1, r[p.key]));
+
+btnMinus.addEventListener('click',()=>{
+  if(!(p.key in r) || typeof r[p.key] !== 'number') return;
+
+  if(p.key === 'area'){
+    r.area = Math.max(0, r.area - 1);
+    disp.textContent = String(r.area);
+    computeRrfForDoneRooms();
+    render();
+  } else {
+    if (isTernaryParam(p.key)){
+      if (r[p.key] <= -1) return;
+      r[p.key] = r[p.key] - 1;
+      r[p.key] = Math.max(-1, Math.min(1, r[p.key]));
+      disp.innerHTML = emojiHtmlFor(p.key, r[p.key]);
+    } else {
+      r[p.key] = r[p.key] - 1;
+      disp.textContent = String(r[p.key]);
+    }
+  }
+});
+
+btnPlus.addEventListener('click',()=>{
+  if(!(p.key in r) || typeof r[p.key] !== 'number') return;
+
+  if(p.key === 'area'){
+    r.area = r.area + 1;
+    disp.textContent = String(r.area);
+    computeRrfForDoneRooms();
+    render();
+  } else {
+    if (isTernaryParam(p.key)){
+      if (r[p.key] >= 1) return;
+      r[p.key] = r[p.key] + 1;
+      r[p.key] = Math.max(-1, Math.min(1, r[p.key]));
+      disp.innerHTML = emojiHtmlFor(p.key, r[p.key]);
+    } else {
+      r[p.key] = r[p.key] + 1;
+      disp.textContent = String(r[p.key]);
+    }
+  }
+});
+
+
+    row.appendChild(lab); row.appendChild(minusWrap); row.appendChild(displayWrap); row.appendChild(plusWrap);
+    paramsPlaceholder.appendChild(row);
+  });
+
+  roomModalShell.classList.toggle('done', rooms[i].done === true);
+  roomModal.classList.add('show'); document.body.style.overflow='hidden';
+}
+
+/* close room modal */
+function closeRoomModal(){ roomModal.classList.remove('show'); document.body.style.overflow=''; activeIndex=null; render(); }
+document.getElementById('btn-close').addEventListener('click', closeRoomModal);
+
+/* Fertig-Button behavior */
+document.getElementById('btn-fertig').addEventListener('click',()=>{
+  if(activeIndex===null) return;
+  const shellDone = roomModalShell.classList.contains('done');
+  if(shellDone){
+    closeRoomModal();
+    return;
+  }
+  rooms[activeIndex].done = true;
+  rooms[activeIndex].result = Math.floor(Math.random()*100);
+  roomModalShell.classList.add('done');
+  computeRrfForDoneRooms();
+  render();
+});
+
+/* name modal logic */
+roomNameDisplay.addEventListener('click', ()=>{
+  if(activeIndex===null) return;
+  nameInput.value = rooms[activeIndex].name.includes('<Name') ? '' : rooms[activeIndex].name;
+  populatePresets('house');
+  nameModal.classList.add('show');
+});
+
+document.getElementById('name-ok-btn').addEventListener('click', ()=>{
+  if(activeIndex===null) return;
+  const v = nameInput.value.trim();
+  if(!v){ nameModal.classList.remove('show'); return; }
+  const final = ensureUniqueName(v);
+  rooms[activeIndex].name = final;
+  roomNameDisplay.textContent = final;
+  nameModal.classList.remove('show');
+  render();
+});
+
+/* presets */
+function populatePresets(mode){
+  presetList.innerHTML = '';
+  const arr = mode==='house' ? presetsHouse : presetsBuilding;
+  arr.forEach(n=>{
+    const b = document.createElement('button'); b.className='preset-btn'; b.textContent = n;
+    b.addEventListener('click', ()=>{
+      nameInput.value = n;
+      const final = ensureUniqueName(n);
+      if(activeIndex!==null){
+        rooms[activeIndex].name = final;
+        roomNameDisplay.textContent = final;
+        render();
+      }
+    });
+    presetList.appendChild(b);
+  });
+}
+document.getElementById('pref-house').addEventListener('click', ()=> populatePresets('house'));
+document.getElementById('pref-building').addEventListener('click', ()=> populatePresets('building'));
+
+
+
+//save
+document.getElementById('save-csv').addEventListener('click', () => {
+  const headers = ['id','name','area','radiators','targetTemp','floor','valveMax','outerWall','windowRatio','radiatorSize','endResult'];
+  const csvRows = [headers.join(',')];
+
+  rooms.forEach(r => {
+    const row = headers.map(h => JSON.stringify(r[h] ?? '')).join(',');
+    csvRows.push(row);
+  });
+
+  const projectName = document.getElementById('project-name').value.trim() || 'projekt';
+  const safeName = projectName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+
+  const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${safeName}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+//load
+document.getElementById('load-csv').addEventListener('click', () => {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.csv';
+  input.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const lines = event.target.result.split('\n').map(l => l.trim()).filter(Boolean);
+      const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+      const parsedRooms = [];
+
+      lines.slice(1).forEach((line, i) => {
+        const values = line.split(',').map(v => {
+          try {
+            return JSON.parse(v);
+          } catch {
+            return v.trim();
+          }
+        });
+        const roomData = Object.fromEntries(headers.map((h, idx) => [h, values[idx]]));
+        parsedRooms.push(validateRoomData(roomData));
+      });
+
+      // Räume aktualisieren
+      parsedRooms.forEach((r, idx) => {
+        if (rooms[idx]) {
+          Object.assign(rooms[idx], r);
+		  rooms[idx].done = typeof r.endResult === 'number';
+        }
+      });
+
+      // Projektname aus Dateiname übernehmen
+      const nameFromFile = file.name.replace(/\.csv$/i, '').replace(/_/g, ' ');
+      document.getElementById('project-name').value = nameFromFile;
+
+      computeRrfForDoneRooms();
+      render();
+    };
+    reader.readAsText(file);
+  });
+  input.click();
+});
+
+//werte nach laden neu berechnen
+
+function validateRoomData(data) {
+  const defaults = {
+    id: 0, name: '<Name auswählen>', area: 12, radiators: 1, targetTemp: 20,
+    floor: 0, valveMax: 6, outerWall: 0, windowRatio: 0, radiatorSize: 0,
+    endResult: null, rRf: 0, rawResult: null, done: false, result: null
+  };
+  const validated = { ...defaults };
+  for (const key in defaults) {
+    if (key in data) {
+      validated[key] = typeof defaults[key] === 'number'
+        ? Number(data[key]) || defaults[key]
+        : data[key];
+    }
+  }
+  return validated;
+}
+
+
+/* escape handling */
+document.addEventListener('keydown',(e)=>{ if(e.key==='Escape'){ if(nameModal.classList.contains('show')) nameModal.classList.remove('show'); else if(roomModal.classList.contains('show')) roomModal.classList.remove('show'); document.body.style.overflow=''; } });
+
+/* initial compute + render */
+computeRrfForDoneRooms();
+render();
+</script>
+</body>
+</html>
