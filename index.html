@@ -238,7 +238,7 @@ function computeRrfForDoneRooms(){
     const radiatorTerm = (radiators - radiators / 4);
     const tempTerm = ((targetTemp - 20) / 3);
 
-    const raw = floor + valveTerm - radiatorTerm + tempTerm + outerWall + windowRatio + radiatorSize;
+    const raw = floor + valveTerm - radiatorTerm + tempTerm + outerWall + windowRatio - radiatorSize;
     r.rawResult = raw;
 
     // endResult rule: if rawResult > valveMax then valveMax else round(rawResult)
