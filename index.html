@@ -324,6 +324,8 @@ btnMinus.addEventListener('click',()=>{
       r[p.key] = r[p.key] - 1;
       disp.textContent = String(r[p.key]);
     }
+	computeRrfForDoneRooms();
+	render();
   }
 });
 
@@ -345,6 +347,8 @@ btnPlus.addEventListener('click',()=>{
       r[p.key] = r[p.key] + 1;
       disp.textContent = String(r[p.key]);
     }
+    computeRrfForDoneRooms();
+	render();
   }
 });
 
@@ -468,12 +472,24 @@ document.getElementById('load-csv').addEventListener('click', () => {
       });
 
       // Räume aktualisieren
-      parsedRooms.forEach((r, idx) => {
-        if (rooms[idx]) {
-          Object.assign(rooms[idx], r);
-		  rooms[idx].done = typeof r.endResult === 'number';
-        }
-      });
+  parsedRooms.forEach((r, idx) => {
+  if (rooms[idx]) {
+    Object.keys(r).forEach(k => {
+      rooms[idx][k] = r[k];
+    });
+
+    rooms[idx].area = Number.isFinite(Number(rooms[idx].area)) ? Number(rooms[idx].area) : 12;
+    rooms[idx].radiators = Number.isFinite(Number(rooms[idx].radiators)) ? Number(rooms[idx].radiators) : 1;
+    rooms[idx].targetTemp = Number.isFinite(Number(rooms[idx].targetTemp)) ? Number(rooms[idx].targetTemp) : 20;
+    rooms[idx].floor = Number.isFinite(Number(rooms[idx].floor)) ? Number(rooms[idx].floor) : 0;
+    rooms[idx].valveMax = Number.isFinite(Number(rooms[idx].valveMax)) ? Number(rooms[idx].valveMax) : 6;
+    rooms[idx].outerWall = Number.isFinite(Number(rooms[idx].outerWall)) ? Number(rooms[idx].outerWall) : 0;
+    rooms[idx].windowRatio = Number.isFinite(Number(rooms[idx].windowRatio)) ? Number(rooms[idx].windowRatio) : 0;
+    rooms[idx].radiatorSize = Number.isFinite(Number(rooms[idx].radiatorSize)) ? Number(rooms[idx].radiatorSize) : 0;
+    rooms[idx].endResult = (rooms[idx].endResult === null) ? null : (Number.isFinite(Number(rooms[idx].endResult)) ? Number(rooms[idx].endResult) : null);
+    rooms[idx].done = rooms[idx].endResult !== null;
+  }
+});
 
       // Projektname aus Dateiname übernehmen
       const nameFromFile = file.name.replace(/\.csv$/i, '').replace(/_/g, ' ');
@@ -495,17 +511,38 @@ function validateRoomData(data) {
     floor: 0, valveMax: 6, outerWall: 0, windowRatio: 0, radiatorSize: 0,
     endResult: null, rRf: 0, rawResult: null, done: false, result: null
   };
+
   const validated = { ...defaults };
+
   for (const key in defaults) {
-    if (key in data) {
-      validated[key] = typeof defaults[key] === 'number'
-        ? Number(data[key]) || defaults[key]
-        : data[key];
+    if (!(key in data)) continue;
+
+    const def = defaults[key];
+
+    if (typeof def === 'number') {
+      const raw = data[key];
+      if (raw === '' || raw === null || raw === undefined) {
+        validated[key] = def;
+      } else {
+        const n = Number(raw);
+        validated[key] = Number.isFinite(n) ? n : def;
+      }
+    } else {
+      validated[key] = data[key];
     }
   }
+
+  if (validated.endResult === '' || validated.endResult === null) {
+    validated.endResult = null;
+  } else {
+    const e = Number(validated.endResult);
+    validated.endResult = Number.isFinite(e) ? e : null;
+  }
+
+  validated.done = validated.endResult !== null;
+
   return validated;
 }
-
 
 /* escape handling */
 document.addEventListener('keydown',(e)=>{ if(e.key==='Escape'){ if(nameModal.classList.contains('show')) nameModal.classList.remove('show'); else if(roomModal.classList.contains('show')) roomModal.classList.remove('show'); document.body.style.overflow=''; } });
