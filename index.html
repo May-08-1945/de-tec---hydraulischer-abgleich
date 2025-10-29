@@ -423,10 +423,9 @@ document.getElementById('pref-building').addEventListener('click', ()=> populate
 
 
 //save
-document.getElementById('save-csv').addEventListener('click', () => {
+document.getElementById('save-csv').addEventListener('click', async () => {
   const headers = ['id','name','area','radiators','targetTemp','floor','valveMax','outerWall','windowRatio','radiatorSize','endResult'];
   const csvRows = [headers.join(',')];
-
   rooms.forEach(r => {
     const row = headers.map(h => JSON.stringify(r[h] ?? '')).join(',');
     csvRows.push(row);
@@ -434,14 +433,51 @@ document.getElementById('save-csv').addEventListener('click', () => {
 
   const projectName = document.getElementById('project-name').value.trim() || 'projekt';
   const safeName = projectName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+  const csvText = csvRows.join('\n');
 
-  const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  // Versuch: Web Share API als native mobile Fallback (wenn verfügbar)
+  try {
+    if (navigator.canShare) {
+      const file = new File([csvText], `${safeName}.csv`, { type: 'text/csv' });
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: projectName });
+        return;
+      }
+    }
+  } catch (e) {
+    // share failed or not supported -> weiter zu anchor fallback
+  }
+
+  // Erzeuge Blob ohne überflüssiges Semikolon
+  const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
+
+  // Erzeuge einen versteckten anchor, hänge ihn ins DOM, klick, warte, entferne dann
   const a = document.createElement('a');
   a.href = url;
   a.download = `${safeName}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
+  a.style.display = 'none';
+  document.body.appendChild(a);
+
+  // Manche Browser blockieren programmgesteuerte clicks; try/catch hilft, danach Fallback öffnen
+  try {
+    a.click();
+  } catch (err) {
+    // do nothing, we'll try open below
+  }
+
+  // Wenn nach kurzer Zeit kein Save-Dialog kam, öffne die Datei in neuem Tab als Fallback
+  // (bei vielen mobilen Browsern zeigt der neue Tab die Datei und der Nutzer kann "Teilen / Speichern" wählen)
+  const fallbackTimeout = setTimeout(() => {
+    try { window.open(url, '_blank'); } catch (e) { /* ignore */ }
+  }, 800);
+
+  // Aufräumen: entferne Anchor und revoke URL nach Verzögerung
+  setTimeout(() => {
+    clearTimeout(fallbackTimeout);
+    try { document.body.removeChild(a); } catch (e) { /* ignore */ }
+    try { URL.revokeObjectURL(url); } catch (e) { /* ignore */ }
+  }, 2500);
 });
 
 //load
